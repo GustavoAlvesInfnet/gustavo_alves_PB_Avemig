@@ -1,0 +1,7 @@
+streamlit
+cachetools
+pandas
+beautifulsoup4
+lxml
+cssselect
+chardet
