@@ -1,7 +1,4 @@
 streamlit
-cachetools
 pandas
-beautifulsoup4
-lxml
-cssselect
-chardet
+bs4
+requests

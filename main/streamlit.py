@@ -1,10 +1,8 @@
 import streamlit as st
-import cachetools as ct
 import random
 import pandas as pd
 from bs4 import BeautifulSoup
 import requests
-from lxml import html
 
 
 @st.cache_data
@@ -143,6 +141,9 @@ def informacoes():
 
     st.write(df)
 
+@st.cache_data
+def mapa():
+    st.header("Mapa")
     
 # cache
 @st.cache_data
