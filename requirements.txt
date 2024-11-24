@@ -2,3 +2,8 @@ streamlit
 pandas
 bs4
 requests
+
+
+folium
+geopandas
+ogr

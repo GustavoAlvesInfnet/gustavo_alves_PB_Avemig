@@ -4,6 +4,10 @@ import pandas as pd
 from bs4 import BeautifulSoup
 import requests
 
+#
+import xml.etree.ElementTree as ET
+import geopandas as gpd
+from shapely.geometry import Point
 
 @st.cache_data
 def introducao():
@@ -143,8 +147,31 @@ def informacoes():
 
 @st.cache_data
 def mapa():
-    st.header("Mapa")
-    
+    st.header("Heatmap das espécies de aves no Brasil")
+
+    # Abrir o arquivo KML
+    tree = ET.parse('data/ebird_hotspots.kml')
+    root = tree.getroot()
+
+    # Criar um dataframe com os dados do KML
+    df = pd.DataFrame({
+        'name': [p.find('name').text for p in root.findall('.//Placemark')],
+        'geometry': [Point(float(coord.split(',')[0]), float(coord.split(',')[1])) for p in root.findall('.//Placemark') for coord in [p.find('Point/coordinates').text]]
+    })
+
+    # Converter o dataframe para um GeoDataFrame
+    gdf = gpd.GeoDataFrame(df, geometry='geometry')
+
+    # Extrair as coordenadas de latitude e longitude da coluna de geometria
+    gdf['latitude'] = gdf['geometry'].apply(lambda x: x.y)
+    gdf['longitude'] = gdf['geometry'].apply(lambda x: x.x)
+
+    # Remover a coluna de geometria
+    gdf = gdf.drop(columns=['geometry'])
+
+    # Criar um mapa com os dados
+    st.map(gdf)
+        
 # cache
 @st.cache_data
 def noticias():
