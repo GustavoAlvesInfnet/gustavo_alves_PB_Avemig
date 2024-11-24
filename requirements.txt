@@ -7,3 +7,6 @@ geopandas
 
 fastapi 
 uvicorn
+
+transformers 
+torch

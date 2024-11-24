@@ -4,6 +4,17 @@ from pydantic import BaseModel
 import pandas as pd
 from fastapi import Query
 
+from transformers import pipeline
+
+import subprocess
+
+def run_uvicorn():
+    comando = "uvicorn main.API:app --reload"
+    subprocess.run(comando, shell=True)
+
+if __name__ == "__main__":
+    run_uvicorn()
+
 app = FastAPI()
 
 class Checklist(BaseModel):
@@ -70,3 +81,18 @@ async def criar_nova_especie(request: Request):
         return {"erro": str(e)}
 
 # curl http://localhost:8000/avesAPI/todas?category=AvesTeste
+
+
+# curl http://localhost:8000/avesAPI/curiosidade
+@app.get("/avesAPI/curiosidade")
+async def curiosity_llm():
+    pipe = pipeline("text-generation", model="distilbert/distilgpt2")
+    result = pipe("A birds curiosity:",truncation=True, max_length=120)
+    result = result[0]["generated_text"]
+    result = result.replace("\n", "")
+
+    #faz com que a Ia termine em ponto final
+    result = result + "."
+    return result
+
+
