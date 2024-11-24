@@ -3,7 +3,7 @@ pandas
 bs4
 requests
 
-
-folium
 geopandas
-ogr
+
+fastapi 
+uvicorn
