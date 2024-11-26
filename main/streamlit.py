@@ -9,6 +9,10 @@ import xml.etree.ElementTree as ET
 import geopandas as gpd
 from shapely.geometry import Point
 
+#
+from scrapping import *
+from LLM import *
+
 @st.cache_data
 def introducao():
     st.title("Avemigos - Programa de análise da vida de aves")
@@ -45,11 +49,12 @@ def introducao():
     st.subheader("Funcionalidades:")
     st.write('''
         \n1. Na aba 'Informações gerais' consiga informações como nome das espécies de uma ordem ou familia, vejam se estão extintas, quem as nomeou e seu país de origem;
-        \n2. Clique no botão 'Executar o scraping';
-        \n3. Clique no botão 'Download' para salvar os dados;
-        \n4. Selecione uma coluna e uma opção na aba 'Analise dinâmica';
-        \n5. Clique no botão 'Executar a analise dinâmica';
-        \n6. Clique no botão 'Download' para salvar os dados;''')
+        \n2. Em mapa veja um heatmap das espécies de aves no Brasil';
+        \n3. Em notícias veja noticias do site https://ebird.org/region/BR/posts;
+        \n4. Em upload selecione um arquivo no formato .csv e carregue seus dados para uma análise;
+        \n5. No botão 'Resumos' obtenha resumos de um report do site https://www.birdlife.org/papers-reports/ obtido via scrapping;
+        \n6. Para ter acesso à API rode o comando 'uvicorn main.API:app --reload';
+        \n7. Para ter acesso ao chatbot rode o comando 'setx GROQ_API_KEY {API_KEY}' caso esteja no windows ou 'export GROQ_API_KEY={API_KEY}' caso esteja no linux, obs: vou deixar a minha chave no PDF e no cmentário;''')
 
 
 
@@ -216,8 +221,42 @@ def upload_file():
         df = pd.read_csv(uploaded_file, on_bad_lines='warn', encoding='latin-1', sep=';')
         st.write(df)
 
+resumo_feito = False
+def resumos():
+    st.title("Resumos de reports do site https://www.birdlife.org/papers-reports/")
+    st.button('Atualiza Scrapping', on_click=scrapping_reports())
+
+
+    # permite ao usuário escolher uma chave de report
+
+    with open('.\data\links.json', 'r') as f:
+        links_dict = json.load(f)
+    reports = list(links_dict.keys())
+    report = st.selectbox('Selecione um report', reports)
+    
+    #st.button('Fazer Resumo', on_click=extrair_texto_pdf(report))
+    def on_click(report):
+        if st.button('Fazer Resumo'):
+            global resumo_feito
+            resumo_feito = True
+            pass
+
+    on_click(report)
+
+    
+
+    if resumo_feito:
+        extrair_texto_pdf(report)
+        report_tratado = report.replace(":", "_")
+
+        with open(f'.\\data\\textos\\{report_tratado}.txt', 'r', encoding='latin1') as f:
+            texto_leve_botao = f.read()
+        st.subheader("Resumo:")
+        st.write(resumo_llama(texto_leve_botao))
+
+
 # Usa um sidebar para fazer a paginação
-page = st.sidebar.selectbox('Selecione uma opção', ['Introdução', 'Informações gerais', 'Mapa', 'Notícias', 'Upload'])
+page = st.sidebar.selectbox('Selecione uma opção', ['Introdução', 'Informações gerais', 'Mapa', 'Notícias', 'Upload', "Resumos"])
 
 if page == 'Introdução':
     introducao()
@@ -229,5 +268,7 @@ elif page == 'Notícias':
     noticias()
 elif page == 'Upload':
     upload_file()
+elif page == "Resumos":
+    resumos()
 
 
