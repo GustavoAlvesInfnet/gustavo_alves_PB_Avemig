@@ -13,3 +13,7 @@ torch
 
 groq
 PyPDF2
+
+langchain
+langchain_core
+langchain_groq

@@ -13,6 +13,41 @@ from shapely.geometry import Point
 from scrapping import *
 from LLM import *
 
+
+
+def chat():
+    st.header("Dashboard")
+
+    # Lê o csv e mostra as informações
+    df = pd.read_csv("./data/eBird-Clements-v2023b-integrated-checklist-December-2023.csv")
+
+    # Retira a order nan
+    #df = df.dropna(subset=['range'])
+    df = df.dropna(subset=['extinct'])
+
+    # retira as seguintes colunas: sort v2023b, species_code, taxon_concept_id, Clements v2023b change,text for website v2023b, name and authority, sort v2022,page 6.0
+    df = df.drop(columns=['sort v2023b', 'species_code', 'taxon_concept_id', 'Clements v2023b change', 'text for website v2023b', 'name and authority', 'sort v2022', 'page 6.0'])
+
+    # filtra para pegar apenas as espécies
+    df = df[df['category'] == 'species']
+    df = df.drop(columns=['category'])
+
+    # trasnforma o df em texto
+    texto = df.to_string(index=False)
+    # conta o número de tokens
+    #num_tokens = len(texto.split())
+    #st.write(f"O dataframe possui {num_tokens} tokens.")
+
+    # salva em um csv
+    df.to_csv('./data/extinctedBirds.csv', index=False)
+
+    st.write(df)
+
+    textoCSV = pd.read_csv('./data/extinctedBirds.csv')
+    textoCSV = textoCSV.to_csv(index=False)
+    groq_MC(textoCSV)
+
+
 @st.cache_data
 def introducao():
     st.title("Avemigos - Programa de análise da vida de aves")
@@ -255,10 +290,18 @@ def resumos():
         st.write(resumo_llama(texto_leve_botao))
 
 
-# Usa um sidebar para fazer a paginação
-page = st.sidebar.selectbox('Selecione uma opção', ['Introdução', 'Informações gerais', 'Mapa', 'Notícias', 'Upload', "Resumos"])
+def dashboard():
+    st.title("Dashboard")
+    st.write("Em construção")
 
-if page == 'Introdução':
+
+# Usa um sidebar para fazer a paginação
+page = st.sidebar.selectbox('Selecione uma opção', ["Chat", 'Introdução', 'Informações gerais', 'Mapa', 'Notícias', 'Upload', "Resumos"])
+
+
+if page == "Chat":
+    chat()
+elif page == 'Introdução':
     introducao()
 elif page == 'Informações gerais':
     informacoes()
@@ -270,5 +313,7 @@ elif page == 'Upload':
     upload_file()
 elif page == "Resumos":
     resumos()
+elif page == "Dashboard":
+    dashboard()
 
 
