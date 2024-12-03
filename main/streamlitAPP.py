@@ -11,8 +11,14 @@ import geopandas as gpd
 from shapely.geometry import Point
 
 #
+import matplotlib.pyplot as plt
+
+#
 from scrapping import *
 from LLM import *
+from API import *
+
+
 
 def chat():
     st.write("Pergunte sobre espécies de aves extintas")
@@ -74,8 +80,12 @@ def introducao():
         \n3. Em notícias veja noticias do site https://ebird.org/region/BR/posts;
         \n4. Em upload selecione um arquivo no formato .csv e carregue seus dados para uma análise;
         \n5. No botão 'Resumos' obtenha resumos de um report do site https://www.birdlife.org/papers-reports/ obtido via scrapping;
-        \n6. Para ter acesso à API rode o comando 'uvicorn main.API:app --reload';
-        \n7. Para ter acesso ao chatbot rode o comando 'setx GROQ_API_KEY {API_KEY}' caso esteja no windows ou 'export GROQ_API_KEY={API_KEY}' caso esteja no linux, obs: vou deixar a minha chave no PDF e no cmentário;''')
+        \n6. No botão 'Classificação' obtenha a classificação de todos os report do site https://www.birdlife.org/papers-reports/ obtido via scrapping;
+        \n7. No botão 'Chat' obtenha uma resposta de uma pergunta sobre os pássaros extintos da IA ou passe uma requisição POST;
+        \n8. No botão 'Dahsboard' obtenha um dashboard com informações sobre os dados do projeto;
+        \n9. Usando requisições vcs poderão usar quaisquer das requisições de http://127.0.0.1:8000/docs incluindo uma curiosidade sobre aves do modelo distilbert/distilgpt2;
+        \n10. Para rodar o programa execute o arquivo 'main.py' (caso esteja usando Windowns, caso não esteja terá que rodar separadamente o streamlit.py e o API.py usando o comando 'streamlit run .\main\streamlitAPP.py' e 'uvicorn main.API:app --reload');
+        \n11. Para ter acesso ao chatbot rode o comando 'setx GROQ_API_KEY {API_KEY}' caso esteja no windows ou 'export GROQ_API_KEY={API_KEY}' caso esteja no linux, obs: vou deixar a minha chave no PDF e no comentário da entrega;''')
 
 
 
@@ -85,6 +95,7 @@ session_state = st.session_state
 
 def informacoes():
     st.header("Informações gerais")
+    st.write("Link para download: https://www.birds.cornell.edu/clementschecklist/introduction/updateindex/december-2023/2023b-citation-and-downloads/")
 
 
     # Lê o csv e mostra as informações
@@ -170,6 +181,26 @@ def informacoes():
 
 
     st.write(df)
+
+    # faz um gráfico mostrando a quantidade de linhas por order
+    # Obter a quantidade de linhas por ordem
+    # Obter a quantidade de linhas por ordem
+    ordens = df['order'].value_counts().nlargest(5)
+
+    # Criar uma figura e um eixo
+    fig, ax = plt.subplots()
+
+    # Criar o gráfico
+    ax.bar(ordens.index, ordens.values)
+    ax.set_xlabel('Ordem')
+    ax.set_ylabel('Quantidade de linhas')
+    ax.set_title('5 Ordens com maior quantidade de linhas')
+    ax.tick_params(axis='x', rotation=45)  # Inclinar os rótulos de dados das colunas em 45 graus
+    fig.tight_layout()  # Ajustar o layout para evitar que os rótulos sejam cortados
+
+    # Exibir o gráfico no Streamlit
+    st.pyplot(fig)
+
 
 @st.cache_data
 def mapa():
@@ -278,13 +309,208 @@ def resumos():
 
 def dashboard():
     st.title("Dashboard")
-    st.write("Em construção")
+    st.write("A ferramenta possui múltiplas funcionalidades, a seguir mostrarei como os dados são tratados em cada uma delas:")
+
+    funcionalidades = ["Chat", "Resumo", "Classificação"]
+    escolha = st.selectbox("Selecione a funcionalidade:", funcionalidades)
+
+    #---------------------------------------------------------------------------------------------------
+    if escolha == "Chat":
+        st.subheader("Chat")
+        st.write("A funcionalidade de chat recebe a base bruta, trata ela, envia para o modelo e devolve uma resposta de até 200 tokens sobre os pássaros extintos.")
+        # conta o número de palavras em eBird-Clements-v2023b-integrated-checklist-December-2023
+        df = pd.read_csv('./data/eBird-Clements-v2023b-integrated-checklist-December-2023.csv')
+        texto = df.to_string(index=False)
+
+        # conta o número de tokens    
+        num_tokens_bruto = len(texto.split())
 
 
+        df = df.dropna(subset=['extinct'])
+
+        # retira as seguintes colunas: sort v2023b, species_code, taxon_concept_id, Clements v2023b change,text for website v2023b, name and authority, sort v2022,page 6.0
+        df = df.drop(columns=['sort v2023b', 'species_code', 'taxon_concept_id', 'Clements v2023b change', 'text for website v2023b', 'name and authority', 'sort v2022', 'page 6.0'])
+
+        # filtra para pegar apenas as espécies
+        df = df[df['category'] == 'species']
+        df = df.drop(columns=['category'])
+
+        texto = df.to_string(index=False)
+        num_tokens_tratado = len(texto.split())
+
+        num_tokens_IA = 200
+
+        # grafico com os tres num_tokens
+            
+        # Create a figure and axis
+        fig, ax = plt.subplots()
+
+        # Create a figure and axis
+        fig, ax = plt.subplots()
+
+        # Define the data
+        labels = ['Num. Tokens Bruto', 'Num. Tokens Tratado', 'Num. Tokens IA']
+        values = [num_tokens_bruto, num_tokens_tratado, num_tokens_IA]
+
+        # Create a bar chart com escala logarítmica no eixo y
+        ax.bar(labels, values)
+        ax.set_yscale('log')
+
+        # Adiciona rótulos de dados acima das colunas
+        for i, value in enumerate(values):
+            ax.text(i, value + 1, str(value), ha='center', va='bottom')
+
+        # Set the title and labels
+        ax.set_title('Número de Tokens')
+        ax.set_xlabel('Tipo de Token')
+        ax.set_ylabel('Número de Tokens')
+
+        # Show the plot
+        st.pyplot(fig)
+
+    #---------------------------------------------------------------------------------------------------
+    elif escolha == "Resumo":
+        st.subheader("Resumo")
+        st.write("A funcionalidade de resumo recebe o texto de uma notícia com até 3500 tokens e resume ela em no máximo 4 parágrafos em PTBR")
+        st.write("Exemplo do fluxo de dados com a notícia Making a Difference (2022)")
+
+        #conta o número de palavras em Making a Difference (2022)
+        with open('./data/textos/Making a Difference (2022).txt', 'r', encoding='latin1') as f:
+            texto = f.read()
+
+        resp = '''A BirdLife International é a maior parceria de conservação da natureza do mundo, presente em 119 países e trabalhando para proteger a vida selvagem em todo o planeta. Com um abordagem única de conservação em larga escala, a BirdLife International atua em 16 países megadiversos e trabalha com comunidades locais e governos para proteger espécies, habitats e ecossistemas.
+
+    No último década, a BirdLife International alcançou resultados impressionantes, salvando espécies em risco de extinção, protegendo habitats críticos e apoianto políticas de conservação. Além disso, a parceria também desenvolveu capacidade de conservação em redes de organizações locais, capacitando mais de 35.000 pessoas em todo o mundo.
+
+    Além disso, a BirdLife International também trabalha para restaurar florestas, proteger áreas marinhas e combater a perda de biodiversidade. Com uma visão de futuro de uma "mundo rico em biodiversidade com gente e natureza viva em harmonia, de forma equitativa e sustentável", a BirdLife International está comprometida em continuar trabalhando para proteger a vida selvagem e as nossas praias.'''
+
+
+        # Define os valores
+        num_tokens_bruto = len(texto.split())
+        num_tokens_tratado = len(resp.split())
+
+        # Cria um gráfico de barras
+        fig, ax = plt.subplots()
+        ax.bar(['Bruto', 'Tratado'], [num_tokens_bruto, num_tokens_tratado])
+
+        # Adiciona título e rótulos
+        ax.set_title('Número de Tokens')
+        ax.set_xlabel('Tipo de Token')
+        ax.set_ylabel('Número de Tokens')
+
+        # Adiciona rótulos de dados acima das barras
+        for i, value in enumerate([num_tokens_bruto, num_tokens_tratado]):
+            ax.text(i, value + 1, str(value), ha='center', va='bottom')
+
+        # Mostra o gráfico
+        st.pyplot(fig)
+
+    #---------------------------------------------------------------------------------------------------
+    elif escolha == "Classificação":
+        st.subheader("Classificação")
+        st.write("A funcionalidade de classificação recebe o texto de todas as noticias e classifica elas em 3 categorias: Conservação e Protecao, Pesquisa e Descobertas, Ameaças e Declinio")
+
+        if os.path.exists(f".//data/textos//todos_textos.txt"):
+            with open(".//data/textos//todos_textos.txt", "r", encoding="utf-8") as arquivo_txt:
+                texto = arquivo_txt.read()
+        resp = '''
+                    [{
+                        "title": "Conservation Investment Strategy for Resident and Migratory Birds of the Chocó-Andean Region in Northwest Ecuador (2022)",
+                        "category": "Conservation and Protection"
+                    },
+                    {
+                        "title": "Making a Difference (2022)",
+                        "category": "Conservation and Protection"
+                    },
+                    {
+                        "title": "State of the World’s Birds_ Taking the pulse of the planet (2018)",
+                        "category": "Research and Discovery"
+                    },
+                    {
+                        "title": "State of Africa’s Birds_ Indicators for our changing environment (2018)",
+                        "category": "Research and Discovery"
+                    },
+                    {
+                        "title": "Making a Difference (2016)",
+                        "category": "Conservation and Protection"
+                    },
+                    {
+                        "title": "Important Bird and Biodiversity Areas_ A global network for conserving nature and benefiting people (2014)",
+                        "category": "Conservation and Protection"
+                    },
+                    {
+                        "title": "Canada Warbler Full-life-cycle Conservation Action Plan (2021)",
+                        "category": "Conservation and Protection"
+                    },
+                    {
+                        "title": "Birds and Biodiversity Targets (2020)",
+                        "category": "Research and Discovery"
+                    },
+                    {
+                        "title": "State of the World’s Birds_ Taking the pulse of the planet (2018)",
+                        "category": "Threats and Decline"
+                    }
+                    ]'''
+        num_tokens_bruto = len(texto.split())
+        num_tokens_tratado = len(resp.split())
+
+        # Cria um gráfico de barras
+        fig, ax = plt.subplots()
+        ax.bar(['Bruto', 'Tratado'], [num_tokens_bruto, num_tokens_tratado])
+
+        # Adiciona título e rótulos
+        ax.set_title('Número de Tokens')
+        ax.set_xlabel('Tipo de Token')
+        ax.set_ylabel('Número de Tokens')
+
+        # Adiciona rótulos de dados acima das barras
+        for i, value in enumerate([num_tokens_bruto, num_tokens_tratado]):
+            ax.text(i, value + 1, str(value), ha='center', va='bottom')
+
+        st.pyplot(fig)
+
+        st.write("exemplo de classificação")
+        #transforma o resp em um json
+        resp = json.loads(resp)
+        st.write(resp)
+
+def classificacao():
+    st.title("Classificação geral das notícias")
+
+    def on_click():
+        # apaga o arquivo
+        if os.path.exists(".//data/textos//todos_textos.txt"):
+            os.remove(".//data/textos//todos_textos.txt")
+
+    if st.button('Atualiza Scrapping'):
+        on_click()
+
+    if not os.path.exists(f".//data/textos//todos_textos.txt"):
+        with open('.\data\links.json', 'r') as f:
+            links_dict = json.load(f)
+        reports = list(links_dict.keys())
+
+        count=0
+        for chave in reports:
+            if count == 0:
+                v_apagar = True
+            else:
+                v_apagar = False
+            count+=1
+            extrair_todos_textos(chave, v_apagar)
+    
+    with open(".//data/textos//todos_textos.txt", "r", encoding="utf-8") as arquivo_txt:
+        texto = arquivo_txt.read()
+
+    st.write("O texto foi classificado como:")
+    st.write(LLM_classifica(texto))
+
+
+    #with open('./data/textos/.txt', 'r', encoding='latin1') as f:
 
 
 # Usa um sidebar para fazer a paginação
-page = st.sidebar.selectbox('Selecione uma opção', ['Introdução', 'Informações gerais', 'Mapa', 'Notícias', 'Upload', "Resumos", "Chat"])
+page = st.sidebar.selectbox('Selecione uma opção', ['Introdução', 'Informações gerais', 'Mapa', 'Notícias', 'Upload', "Resumos", "Classificação",  "Chat", "Dashboard"])
 
 if page == 'Introdução':
     introducao()
@@ -298,6 +524,8 @@ elif page == 'Upload':
     upload_file()
 elif page == "Resumos":
     resumos()
+elif page == "Classificação":
+    classificacao()
 elif page == "Dashboard":
     dashboard()
 elif page == "Chat":

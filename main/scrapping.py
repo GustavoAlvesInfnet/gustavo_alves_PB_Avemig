@@ -71,7 +71,8 @@ def extrair_texto_pdf(chave):
             #print(f"O PDF {nome_arquivo} possui {tokens} tokens.")
 
             #pega os 1000 primeiros tokens
-            primeiros_tokens = texto.split()[:1000]
+            #primeiros_tokens = texto.split()[:1000]
+            primeiros_tokens = texto.split()[:3500]
             texto_leve = " ".join(primeiros_tokens)
 
             #quantos tokens tem o texto leve
@@ -123,7 +124,7 @@ def extrair_todos_textos(chave, v_apagar):
 
             #pega os 1000 primeiros tokens
             texto = texto.replace("..", "")
-            primeiros_tokens = texto.split()[:500]
+            primeiros_tokens = texto.split()[:400]
             texto_leve = " ".join(primeiros_tokens)
 
             #quantos tokens tem o texto leve
@@ -137,8 +138,9 @@ def extrair_todos_textos(chave, v_apagar):
                 #apaga o pdf
                 with open(f".//data/textos//todos_textos.txt", "w", encoding="utf-8") as arquivo_txt:
                     arquivo_txt.write("\n" + nome_arquivo_txt + ":" + texto_leve)
-            #salva todos os textos em um único arquivo txt
-            with open(f".//data/textos//todos_textos.txt", "a", encoding="utf-8") as arquivo_txt:
-                arquivo_txt.write("\n" + nome_arquivo_txt + ":" + texto_leve)
+            else:
+                #salva todos os textos em um único arquivo txt
+                with open(f".//data/textos//todos_textos.txt", "a", encoding="utf-8") as arquivo_txt:
+                    arquivo_txt.write("\n" + nome_arquivo_txt + ":" + texto_leve)
     else:
         print(f"A chave {chave} não foi encontrada no dicionário.")
