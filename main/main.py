@@ -1,7 +1,7 @@
 import subprocess
 
 def run_streamlit():
-    subprocess.Popen(["start", "streamlit", "run", r".\main\streamlitAPP.py"], shell=True)
+    subprocess.Popen(["start", "streamlit", "run", r".\\main\streamlitAPP.py"], shell=True)
 
 def run_uvicorn():
     subprocess.Popen(["start", "uvicorn", "main.API:app", "--reload"], shell=True)

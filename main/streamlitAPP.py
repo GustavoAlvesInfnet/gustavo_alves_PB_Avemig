@@ -18,6 +18,27 @@ from scrapping import *
 from LLM import *
 from API import *
 
+#
+import streamlit as st
+
+# Agent and LLM
+from langchain import LLMChain, OpenAI
+from langchain.agents import AgentExecutor, Tool, ConversationalAgent
+from langchain_community.chat_models import ChatOpenAI
+from langchain_community.llms import OpenAI
+# Memory
+from langchain.memory import ConversationBufferMemory
+from langchain.memory.chat_message_histories import StreamlitChatMessageHistory
+# Tools
+from langchain.utilities import GoogleSerperAPIWrapper
+from langchain.utilities import OpenWeatherMapAPIWrapper
+from langchain_groq import ChatGroq
+
+
+import random
+import os
+import requests
+import asyncio
 
 
 def chat():
@@ -45,8 +66,8 @@ def introducao():
     st.title("Avemigos - Programa de análise da vida de aves")
 
     # Problema
-    st.subheader("Curioso para saber mais sobre as aves? Suas famílias e especies? Os seus habitats?")
-    st.write("Este projeto consiste em uma solução para aqueles que querem saber mais sobre pássaros mas não sabem por onde começar. Avemigos têm como objetivo dar um norte para qualquer curioso sobre nossos amigos de penas e disseminar informações que podem ajudar o tópico 15 dos Objetivos de Desenvolvimento Sustentável (ODS) da Agenda 2030.")
+    st.subheader("Curioso para saber mais sobre as aves? Suas famílias e espécies? Os seus habitats?")
+    st.write("Este projeto consiste em uma solução para aqueles que querem saber mais sobre pássaros, mas não sabem por onde começar. Avemigos tem como objetivo dar um norte para qualquer curioso sobre nossos amigos de penas e disseminar informações que podem ajudar o tópico 15 dos Objetivos de Desenvolvimento Sustentável (ODS) da Agenda 2030.")
 
     # gera um numero aleatorio para escolher uma imagem de aves
     random_number = random.randint(1, 6)
@@ -76,16 +97,17 @@ def introducao():
     st.subheader("Funcionalidades:")
     st.write('''
         \n1. Na aba 'Informações gerais' consiga informações como nome das espécies de uma ordem ou familia, vejam se estão extintas, quem as nomeou e seu país de origem;
-        \n2. Em mapa veja um heatmap das espécies de aves no Brasil';
-        \n3. Em notícias veja noticias do site https://ebird.org/region/BR/posts;
-        \n4. Em upload selecione um arquivo no formato .csv e carregue seus dados para uma análise;
+        \n2. Em 'mapa' veja um heatmap das espécies de aves no Brasil;
+        \n3. Em 'notícias' veja noticias do site https://ebird.org/region/BR/posts;
+        \n4. Em 'upload' selecione um arquivo no formato .csv e carregue seus dados para uma análise;
         \n5. No botão 'Resumos' obtenha resumos de um report do site https://www.birdlife.org/papers-reports/ obtido via scrapping;
         \n6. No botão 'Classificação' obtenha a classificação de todos os report do site https://www.birdlife.org/papers-reports/ obtido via scrapping;
         \n7. No botão 'Chat' obtenha uma resposta de uma pergunta sobre os pássaros extintos da IA ou passe uma requisição POST;
         \n8. No botão 'Dahsboard' obtenha um dashboard com informações sobre os dados do projeto;
-        \n9. Usando requisições vcs poderão usar quaisquer das requisições de http://127.0.0.1:8000/docs incluindo uma curiosidade sobre aves do modelo distilbert/distilgpt2;
-        \n10. Para rodar o programa execute o arquivo 'main.py' (caso esteja usando Windowns, caso não esteja terá que rodar separadamente o streamlit.py e o API.py usando o comando 'streamlit run .\main\streamlitAPP.py' e 'uvicorn main.API:app --reload');
-        \n11. Para ter acesso ao chatbot rode o comando 'setx GROQ_API_KEY {API_KEY}' caso esteja no windows ou 'export GROQ_API_KEY={API_KEY}' caso esteja no linux, obs: vou deixar a minha chave no PDF e no comentário da entrega;''')
+        \n9. No botão 'Agente' obtenha um chatbot que ajuda a responder perguntas que ajudam nas observAções de aves;
+        \n10. Vocês poderão usar quaisquer das requisições de http://127.0.0.1:8000/docs incluindo uma curiosidade sobre aves do modelo distilbert/distilgpt2;
+        \n11. Para rodar o programa execute o arquivo 'main.py' (caso esteja usando Windowns, caso não esteja terá que rodar separadamente o streamlit.py e o API.py usando o comando 'streamlit run .\main\streamlitAPP.py' e 'uvicorn main.API:app --reload');
+        \n12. Para ter acesso ao chatbot rode o comando 'setx GROQ_API_KEY {API_KEY}' caso esteja no windows ou 'export GROQ_API_KEY={API_KEY}' caso esteja no linux. obs: vou deixar as minhas chaves no PDF e no comentário da entrega;''')
 
 
 
@@ -477,6 +499,8 @@ def dashboard():
 def classificacao():
     st.title("Classificação geral das notícias")
 
+    st.write("A funcionalidade de classificação recebe o texto de todas as noticias e classifica elas em 3 categorias: Conservação e Protecao, Pesquisa e Descobertas, Ameaças e Declinio")
+
     def on_click():
         # apaga o arquivo
         if os.path.exists(".//data/textos//todos_textos.txt"):
@@ -508,9 +532,174 @@ def classificacao():
 
     #with open('./data/textos/.txt', 'r', encoding='latin1') as f:
 
+def bird_watch_agent():
+    st.title("Bird Watching Assistant")
+
+    st.text('''Funcionalitys:
+
+    - Ask questions about birds
+    - Get current weather in a location to know if is possible to birdwatch
+    - Get a random bird song
+    - Get a specific bird song''')
+
+
+    # Set Tools
+    SERPER_API_KEY = os.getenv("SERPER_API_KEY") 
+    OPENWEATHERMAP_API_KEY = os.getenv("OPENWEATHERMAP_API_KEY")
+
+    search = GoogleSerperAPIWrapper(serper_api_key=SERPER_API_KEY)
+    weather = OpenWeatherMapAPIWrapper(openweathermap_api_key=OPENWEATHERMAP_API_KEY)
+
+
+    async def random_canto(_):
+        url = "https://xeno-canto.org/api/2/recordings?query=cnt:brazil"
+
+        response = requests.get(url)
+
+        json = response.json()
+
+        rand = random.randint(0, len(json['recordings'])-1)
+
+        # consigo o file a partir do ID
+        file_url = json['recordings'][rand]['file']
+        name_url = json['recordings'][rand]['en']
+
+        # baixo o arquivo
+        response = requests.get(file_url, stream=True)
+
+        # salvo o arquivo em um arquivo local
+        with open('.\cantos\canto.mp3', 'wb') as f:
+            for chunk in response.iter_content(chunk_size=1024):
+                f.write(chunk)
+        print("Canto da Ave: "+name_url)
+        print("Arquivo baixado com sucesso!")
+
+        st.audio('.\cantos\canto.mp3')
+
+    async def pesquisa_canto(nome_ave):
+        url = f"https://xeno-canto.org/api/2/recordings?query={nome_ave}"
+
+        response = requests.get(url)
+
+        json = response.json()
+
+        rand = random.randint(0, len(json['recordings'])-1)
+
+        # consigo o file a partir do ID
+        file_url = json['recordings'][rand]['file']
+
+        # baixo o arquivo
+        response = requests.get(file_url, stream=True)
+
+        # salvo o arquivo em um arquivo local
+        with open('.\cantos\canto_especifico.mp3', 'wb') as f:
+            for chunk in response.iter_content(chunk_size=1024):
+                f.write(chunk)
+
+        print("Arquivo baixado com sucesso!")
+
+        # toca o arquivo mp3 com streamlit
+
+        #st.subheader("Canto da Ave: "+nome_ave)
+        st.audio('.\cantos\canto_especifico.mp3')
+
+    tools = [
+        Tool(
+            name="Search",
+            func=search.run,
+            description="Useful for when you need to get especific information about a topic like a bird curiosity or a atuality. Input should be a search query.",
+        ),
+        Tool(
+            name="Weather",
+            func=weather.run,
+            description="Useful for when you need to get the current weather in a location.",
+        ),
+        Tool(
+            name="Canto Aleatório",
+            func=lambda input: asyncio.run(random_canto(input)),
+            description="Useful for when you need to get a random bird song.",
+        ),
+        Tool(
+            name="Canto Específico",
+            func=lambda input: asyncio.run(pesquisa_canto(input)),
+            description="Useful for when you need to get a specific bird song. Like cockatiel, lovebird, conures, etc.",
+        )
+
+    ]
+
+    # Set Chat Conversation
+
+    prefix = """ You are a friendly bird watching assistant.
+    You can help users to listen bird songs based on their preferences.
+    You have access to the following tools:"
+    """
+
+    suffix = """
+    Chat History:
+    {chat_history}
+    Latest Question: {input}
+    {agent_scratchpad}
+    """
+
+    prompt = ConversationalAgent.create_prompt(
+        tools,
+        prefix=prefix,
+        suffix=suffix,
+        input_variables=["input",
+                        "chat_history",
+                        "agent_scratchpad"],
+    )
+
+    # Set Memory
+
+    msg = StreamlitChatMessageHistory()
+
+    if "memory" not in st.session_state:
+        st.session_state.memory = ConversationBufferMemory(
+            messages=msg,
+            memory_key="chat_history",
+            return_messages=True
+        )
+    memory = st.session_state.memory
+
+    # Set Agent
+
+    llm_chain = LLMChain(
+        llm=ChatGroq(temperature=0.8, model_name="llama3-8b-8192"),
+        prompt=prompt,
+        verbose=True
+    )
+
+    agent = ConversationalAgent(
+        llm_chain=llm_chain,
+        memory=memory,
+        verbose=True,
+        max_interactions=3,
+        tools=tools,
+    )
+
+    agent_executor = AgentExecutor.from_agent_and_tools(agent=agent,
+                                                        tools=tools,
+                                                        memory=memory,
+                                                        verbose=True)
+
+    #query = st.text_input("O que você quer fazer hoje?", placeholder="Digite aqui...")
+    query = st.text_input("What you want to know about birds?")
+
+    if query:
+        with st.spinner("Estou pensando..."):
+            result = agent_executor.run(query)
+            st.info(result, icon="🤖")
+
+    with st.expander("My thinking"):
+        st.write(st.session_state.memory.chat_memory.messages)
+
+
+
+    
 
 # Usa um sidebar para fazer a paginação
-page = st.sidebar.selectbox('Selecione uma opção', ['Introdução', 'Informações gerais', 'Mapa', 'Notícias', 'Upload', "Resumos", "Classificação",  "Chat", "Dashboard"])
+page = st.sidebar.selectbox('Selecione uma opção', ['Introdução', 'Informações gerais', "Resumos", "Classificação",  "Chat", "Dashboard", "Bird Watch Agent", 'Mapa', 'Notícias', 'Upload', ])
 
 if page == 'Introdução':
     introducao()
@@ -530,5 +719,7 @@ elif page == "Dashboard":
     dashboard()
 elif page == "Chat":
     chat()
+elif page == "Bird Watch Agent":
+    bird_watch_agent()
 
 
