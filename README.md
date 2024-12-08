@@ -2,12 +2,16 @@
 
 # Passo a passo para execução correta do código:
 1- python -m venv Venv 
+
 2- .\Venv\Scripts\activate 
+
 3- pip install -r requirements.txt 
+
 4- Use setx if you using windows or export if you are using linux
     setx SERPER_API_KEY chave
     setx OPENWEATHERMAP_API_KEY chave
     setx GROQ_API_KEY chave
+    
 5- Tente rodar usando streamlit run .\main.py caso dê erro com as chaves feche o aplicativo e execute de novo o passo 5 
 
 # Avemigos
