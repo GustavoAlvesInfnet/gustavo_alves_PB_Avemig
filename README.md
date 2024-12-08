@@ -12,7 +12,7 @@
     setx OPENWEATHERMAP_API_KEY chave
     setx GROQ_API_KEY chave
     
-5- Tente rodar usando streamlit run .\main.py caso dê erro com as chaves feche o aplicativo e execute de novo o passo 5 
+5- Tente rodar apenas executando o arquivo main. Caso esteja no linux terá que usar os comandos "streamlit run .\\main\streamlitAPP.py" e o comando "uvicorn API:app --reload"
 
 # Avemigos
 ## Solução de Negócio com Ciência de Dados
